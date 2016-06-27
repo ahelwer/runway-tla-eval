@@ -1,0 +1,70 @@
+type JugId : 1 .. 2;
+type JugIdPairRange : 1 .. 4;
+
+type JugPairType : record {
+    first : JugId,
+    second : JugId,
+};
+
+type JugVolume : 0 .. 99;
+
+type JugType : record {
+    volume : JugVolume,
+    currentLevel : JugVolume,
+};
+
+var jugs : Array<JugType>[JugId];
+jugs[1] = JugType { volume : 5, currentLevel : 0 };
+jugs[2] = JugType { volume : 3, currentLevel : 0 };
+
+invariant JugSafety {
+    for jug in jugs {
+        assert(jug.currentLevel <= jug.volume);
+        assert(jug.currentLevel >= 0);
+    }
+}
+
+invariant Success {
+    for jug in jugs {
+        assert(jug.currentLevel != 4);
+    }
+}
+
+rule pourOut for jug in jugs {
+    jug.currentLevel = 0;
+}
+
+rule fill for jug in jugs {
+    jug.currentLevel = jug.volume;
+}
+
+function getAllJugPairs() -> Set<JugPairType>[JugIdPairRange] {
+    var jugPairs : Set<JugPairType>[JugIdPairRange];
+    for firstId, firstJug in jugs {
+        for secondId, secondJug in jugs {
+            push(jugPairs, JugPairType { first : firstId, second : secondId });
+        }
+    }
+
+    return jugPairs;
+}
+
+function min(a : JugVolume, b : JugVolume) -> JugVolume {
+    if (a <= b) {
+        return a;
+    }
+    else {
+        return b;
+    }
+}
+
+rule transfer for jugPair in getAllJugPairs() {
+    if (jugPair.first != jugPair.second)
+    {
+        var source : JugType = jugs[jugPair.first];
+        var target : JugType = jugs[jugPair.second];
+        var transferred : JugVolume = min(source.currentLevel, target.volume - target.currentLevel);
+        jugs[jugPair.first].currentLevel -= transferred;
+        jugs[jugPair.second].currentLevel += transferred;
+    }
+}
